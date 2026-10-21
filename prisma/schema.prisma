@@ -1,0 +1,355 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum Role {
+  EMPLOYEE
+  AGENT
+  ADMIN
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum SLAStatus {
+  ACTIVE
+  PAUSED
+  BREACHED
+  COMPLETED
+}
+// ============================================================
+// USER
+// ============================================================
+
+model User {
+  id       Int    @id @default(autoincrement())
+  name     String
+  email    String @unique
+  password String
+  role     Role   @default(EMPLOYEE)
+  isActive Boolean @default(true)
+  sessionVersion Int @default(0)
+  profilePhotoKey String?
+
+  departmentId Int?
+  department   Department? @relation(fields: [departmentId], references: [id])
+
+  // Tickets created by this user
+  createdTickets Ticket[] @relation("TicketCreator")
+
+  // Tickets assigned to this user
+  assignedTickets Ticket[] @relation("TicketAssignee")
+
+  // Comments written by this user
+  comments Comment[]
+
+  // Files uploaded by this user
+  attachments Attachment[]
+
+  // Notifications belonging to this user
+  notifications Notification[]
+  notificationPreference UserNotificationPreference?
+
+  // Audit actions performed by this user
+  auditLogs AuditLog[]
+  oauthIdentities OAuthIdentity[]
+  passwordResetTokens PasswordResetToken[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([departmentId])
+}
+
+model OAuthIdentity {
+  id                Int      @id @default(autoincrement())
+  provider          String
+  providerAccountId String
+  userId            Int
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt         DateTime @default(now())
+
+  @@unique([provider, providerAccountId])
+  @@unique([provider, userId])
+  @@index([userId])
+}
+
+model PasswordResetToken {
+  id          Int       @id @default(autoincrement())
+  tokenHash   String    @unique
+  userId      Int
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt   DateTime
+  consumedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model PasswordResetRequestLimit {
+  keyHash         String   @id
+  count           Int      @default(0)
+  windowStartedAt DateTime
+  updatedAt       DateTime @updatedAt
+
+  @@index([windowStartedAt])
+}
+
+
+// ============================================================
+// DEPARTMENT
+// ============================================================
+
+model Department {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+
+  users   User[]
+  tickets Ticket[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+
+// ============================================================
+// CATEGORY
+// ============================================================
+
+model Category {
+  id          Int    @id @default(autoincrement())
+  name        String @unique
+  description String?
+
+  tickets Ticket[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+
+// ============================================================
+// TICKET
+// ============================================================
+
+model Ticket {
+  id Int @id @default(autoincrement())
+
+  title       String
+  description String
+
+  status   TicketStatus @default(OPEN)
+  priority Priority     @default(MEDIUM)
+
+  // User who created the ticket
+  creatorId Int
+  creator   User @relation("TicketCreator", fields: [creatorId], references: [id])
+
+  // Agent responsible for the ticket
+  assigneeId Int?
+  assignee   User? @relation("TicketAssignee", fields: [assigneeId], references: [id])
+
+  // Department responsible for the ticket
+  departmentId Int
+  department   Department @relation(fields: [departmentId], references: [id])
+
+  // Ticket category
+  categoryId Int
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  // Related records
+  comments    Comment[]
+  attachments Attachment[]
+  notifications Notification[]
+  auditLogs  AuditLog[]
+
+  // SLA associated with this ticket
+  slaId Int?
+  sla   SLA? @relation(fields: [slaId], references: [id])
+
+  resolvedAt DateTime?
+  closedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([creatorId])
+  @@index([assigneeId])
+  @@index([departmentId])
+  @@index([categoryId])
+  @@index([slaId])
+  @@index([status])
+  @@index([priority])
+}
+
+
+// ============================================================
+// COMMENT
+// ============================================================
+
+model Comment {
+  id      Int    @id @default(autoincrement())
+  content String
+
+  ticketId Int
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  authorId Int
+  author   User @relation(fields: [authorId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ticketId])
+  @@index([authorId])
+}
+
+
+// ============================================================
+// ATTACHMENT
+// ============================================================
+
+model Attachment {
+  id Int @id @default(autoincrement())
+
+  fileName String
+  fileUrl  String
+  fileType String?
+  fileSize Int?
+
+  ticketId Int
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  uploadedById Int
+  uploadedBy   User @relation(fields: [uploadedById], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([ticketId])
+  @@index([uploadedById])
+}
+
+
+// ============================================================
+// SLA
+// ============================================================
+
+model SLA {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+
+  description String?
+
+  // How long the support team has to respond
+  responseTimeMinutes Int
+
+  // How long the support team has to resolve the ticket
+  resolutionTimeMinutes Int
+
+  status SLAStatus @default(ACTIVE)
+
+  // Tickets using this SLA
+  tickets Ticket[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+
+// ============================================================
+// NOTIFICATION
+// ============================================================
+
+model Notification {
+  id Int @id @default(autoincrement())
+
+  title   String
+  message String
+  isRead  Boolean @default(false)
+
+  // User receiving the notification
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Optional ticket related to this notification
+  ticketId Int?
+  ticket   Ticket? @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([ticketId])
+  @@index([isRead])
+}
+
+model UserNotificationPreference {
+  id                       Int      @id @default(autoincrement())
+  userId                   Int      @unique
+  user                     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ticketAssignedInApp      Boolean  @default(true)
+  ticketAssignedEmail      Boolean  @default(true)
+  newCommentInApp          Boolean  @default(true)
+  newCommentEmail          Boolean  @default(true)
+  ticketStatusUpdatedInApp Boolean  @default(true)
+  ticketStatusUpdatedEmail Boolean  @default(true)
+  slaAlertsInApp           Boolean  @default(true)
+  slaAlertsEmail           Boolean  @default(true)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+}
+
+model WorkspaceSetting {
+  key                   String   @id @default("default")
+  workspaceName         String   @default("Service Desk")
+  supportEmail          String   @default("")
+  defaultTicketPriority Priority @default(MEDIUM)
+  autoAssignment        Boolean  @default(false)
+  brandColor            String   @default("#2563EB")
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+
+// ============================================================
+// AUDIT LOG
+// ============================================================
+
+model AuditLog {
+  id Int @id @default(autoincrement())
+
+  action  String
+  details String?
+
+  // Optional ticket related to the action
+  ticketId Int?
+  ticket   Ticket? @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  // User who performed the action
+  userId Int
+  user   User @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([ticketId])
+  @@index([userId])
+  @@index([createdAt])
+}
