@@ -16,6 +16,7 @@
 # next.js
 /.next/
 /out/
+/.private/
 
 # production
 /build
@@ -32,6 +33,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.test.example
 
 # vercel
 .vercel
@@ -39,3 +41,17 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+# local credentials and private keys
+credentials.json
+service-account.json
+id_rsa
+id_ed25519
+*.key
+*.p12
+*.pfx
+
+# Local AI coding agent configuration
+/.agents/
+/.claude/
+/.cursor/
+/.devin/

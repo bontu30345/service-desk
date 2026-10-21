@@ -6,12 +6,29 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "node --experimental-test-module-mocks --import tsx --test tests/unit/permissions.test.ts tests/unit/schemas.test.ts tests/unit/ticket-report-csv.test.ts tests/unit/database-target.test.ts tests/unit/action-security.test.ts tests/unit/profile-photo.test.ts tests/unit/protected-api-routes.test.ts tests/unit/dashboard-agent.test.ts tests/unit/password-reset-actions.test.ts  tests/unit/password-reset-email.test.ts tests/unit/oauth-config.test.ts tests/unit/credentials-auth.test.ts tests/unit/session-token.test.ts",
+    "test:integration:db": "node --env-file-if-exists=.env --import tsx --test-concurrency=1 --test tests/integration/database-safety.test.ts tests/integration/ticket-workflows.test.ts tests/integration/comment-notification-audit.test.ts tests/integration/auth-security.test.ts",
+    "test:db:migrate": "node --env-file-if-exists=.env --import tsx scripts/migrate-test-database.ts",
+    "account:recover-password": "node --import tsx scripts/recover-local-password.ts",
+    "account:update-email": "node --import tsx scripts/update-local-account-email.ts",
+    "postinstall": "prisma skills sync || exit 0"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1149.0",
+    "@prisma/adapter-pg": "^7.10.0",
+    "@prisma/client": "^7.10.0",
+    "apexcharts": "^8.0.0",
+    "bcryptjs": "^3.0.3",
     "next": "16.3.8",
+    "next-auth": "^5.0.0-beta.32",
+    "pg": "^8.23.1",
+    "prisma": "^7.10.0",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-apexcharts": "^2.1.1",
+    "react-dom": "19.2.8",
+    "sharp": "^0.35.5",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -21,6 +38,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.8",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }
